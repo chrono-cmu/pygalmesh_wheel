@@ -28,6 +28,8 @@ from smac import RunHistory, Scenario
 from smac.runhistory.dataclasses import TrialValue
 from smac.utils import configspace
 
+import gmail_monitor
+
 __copyright__ = "Copyright 2025, Leibniz University Hanover, Institute of AI"
 __license__ = "3-clause BSD"
 
@@ -65,35 +67,33 @@ class Simulation:
         slip_ratio *= noise_scale
         return -slip_ratio
 
+def plot_runs(paramter : str, configs, incumbents, runhistory):  
+        for i, config in enumerate(configs):
+            if config in incumbents:      
+                continue
 
-def plot_runs(paramter : str, configs, incumbents, runhistory):
-    for i, config in enumerate(configs):
-        if config in incumbents:
-            continue
+            label = None
+            if i == 0:
+                label = "Configuration"
+            
+            x = config[paramter]   
+            f1 = runhistory.get_cost(config)    
+            plt.scatter(x, f1, c="blue", alpha=0.1, marker="o", zorder=3000, label=label)
 
-        label = None
-        if i == 0:
-            label = "Configuration"
+        for i, config in enumerate(incumbents):    
+            label = None    
+            if i == 0:      
+                label = "Incumbent"
 
-        x = config[paramter]
-        f1 = runhistory.get_cost(config)
-        plt.scatter(x, f1, c="blue", alpha=0.1, marker="o", zorder=3000, label=label)
+            x = config[paramter]    
+            f1 = runhistory.get_cost(config)    
+            plt.scatter(x, f1, c="red", alpha=1, marker="x", zorder=3000, label=label)
 
-    for i, config in enumerate(incumbents):
-        label = None
-        if i == 0:
-            label = "Incumbent"
-
-        x = config[paramter]
-        f1 = runhistory.get_cost(config)
-        plt.scatter(x, f1, c="red", alpha=1, marker="x", zorder=3000, label=label)
-
-    plt.xlabel(paramter)
-    plt.ylabel("score")
-    plt.title("sim eval")
-    plt.legend()
-
-    plt.show()
+        plt.xlabel(paramter)  
+        plt.ylabel("score")  
+        plt.title("sim eval")  
+        plt.legend()
+        plt.show()
 
 
 def plot_from_smac(smac: HPOFacade, model:Simulation, runhistory) -> None:
@@ -101,13 +101,14 @@ def plot_from_smac(smac: HPOFacade, model:Simulation, runhistory) -> None:
     configs = smac.runhistory.get_configs()
     incumbents = smac.intensifier.get_incumbents()
 
-    for wheel_param in list(scenario.configspace.values()):
-        plot_runs(wheel_param.name, configs, incumbents, runhistory)
+    # for wheel_param in list(scenario.configspace.values()):
+    #     plot_runs(wheel_param.name, configs, incumbents, runhistory)
+    plot_runs("rim radius", configs, incumbents, runhistory)
 
 
 if __name__ == "__main__":
     model = Simulation()
-    n_trials = 10
+    n_trials = 4
 
     # Scenario object specifying the optimization "environment"
     scenario = Scenario(model.configspace, deterministic=True, n_trials = n_trials)
@@ -122,7 +123,7 @@ if __name__ == "__main__":
     # incumbent = smac.optimize()
     for trial_num in range(n_trials):
         info = smac.ask()
-        # assert info.seed is not None
+        assert info.seed is not None
 
         wheel_param = {
             "rim radius": info.config["rim radius"],
@@ -145,23 +146,33 @@ if __name__ == "__main__":
         }
 
         print("start bash script")
-        script_result = subprocess.run(["./automated_pipeline.sh", "upload"], capture_output=True, text=True)
+        script_result = subprocess.run(["./automated_pipeline.sh", "upload", str(trial_num)], capture_output=True, text=True)
+        JOB_ID = 0
         if script_result.returncode == 0:
             output_lines = script_result.stdout.strip().split('\n')
-            JOB_ID = output_lines[-7]
-            print("Script success and jobid captured "+ JOB_ID)
+            for line in output_lines:
+                if "job id:" in line:
+                    JOB_ID = line.split(":")[1]
+            if JOB_ID == 0:
+                print("job id not found")
+            else:
+                print("Script success and jobid captured "+ JOB_ID)
         else:
             print("Script failed or filename not capture")
         print("end bash script")
+        print("stdout:")
+        print(script_result.stdout)
+        print("stderr:")
+        print(script_result.stderr)
 
-        print("stdout:", script_result.stdout)
-        print("stderr:", script_result.stderr)
+        print("start gmail monitor")
+        gmail_monitor.monitor(JOB_ID)
         
         df = pd.read_csv('~/Documents/wheel_sim_data/automation_test_' + JOB_ID + '/output_directory/output.csv')
-        if df.empty:
-            avg_dc = evaluate(config)
-        else:
-            avg_dc = (df['f_x'] / df['f_z']).mean()
+
+
+        avg_dc = model.evaluate(info.config)
+        # avg_dc = (df['f_x'] / df['f_z']).mean()
 
         
 
@@ -184,5 +195,4 @@ if __name__ == "__main__":
     plot_from_smac(smac, model, smac.runhistory)
     print(incumbent)
 
-    
     
