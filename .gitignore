@@ -164,3 +164,17 @@ cython_debug/
 *.obj
 *.mtl
 blender*
+
+
+# Smac3
+smac3_output/
+
+# keys
+key_pair_psc
+key_pair_psc.pub
+
+token.pkl
+credentials*
+
+# py env script
+conda_hook.sh
