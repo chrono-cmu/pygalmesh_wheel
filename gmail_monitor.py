@@ -50,13 +50,7 @@ def get_subject(service, msg_id):
             return header['value']
     return ""
 
-def main():
-    if len(sys.argv) == 2:
-        job_id = sys.argv[1]
-    else:
-        print("No job_id provided")
-        sys.exit(1)
-
+def monitor(job_id):
     service = authenticate()
     seen_ids = set()
 
@@ -75,8 +69,9 @@ def main():
                     print(f"New COMPLETED job email: {subject}")
                     
                     subprocess.run(["./automated_pipeline.sh", "download", job_id])
-                    sys.exit()
-
+                    return 
+        
+        print("loop monitor")
         time.sleep(30)
 
 if __name__ == '__main__':
