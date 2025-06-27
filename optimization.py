@@ -126,24 +126,30 @@ if __name__ == "__main__":
         assert info.seed is not None
 
         wheel_param = {
-            "rim radius": info.config["rim radius"],
+            "rim_radius": info.config["rim radius"],
             "width": info.config["width"],
-            "grouser number": info.config["grouser number"],
-            "grouser thickness": info.config["grouser thickness"],
-            "grouser height": info.config["grouser height"],
-            "control point deviation": info.config["control point deviation"],
-            "wave number": info.config["wave number"],
-            "wave amplitude": info.config["wave amplitude"]
+            "grouser_number": info.config["grouser number"],
+            "grouser_thickness": info.config["grouser thickness"],
+            "grouser_height": info.config["grouser height"],
+            "control_point deviation": info.config["control point deviation"],
+            "wave_number": info.config["wave number"],
+            "wave_amplitude": info.config["wave amplitude"],
+            "outer_radius": info.config["rim radius"] + info.config["grouser height"]
         }
         with open("wheel_jsons/wheel_parameters.json", "w") as json_file:
             json.dump(wheel_param, json_file, indent=4)
 
-        simulation_json = {
+        job_json = {
             "terrain_filepath": "/jet/home/matthies/moonranger_mobility/terrain/GRC_3e5_Reduced_Footprint.csv",
-            "wheel_filepath": "/jet/home/matthies/moonranger_mobility/meshes/wheel_"+str(trial_num)+"/wheel.obj",
-            "wheel_filepath": "/jet/home/matthies/moonranger_mobility/meshes/wheel_"+str(trial_num)+"/wheel_parameters.json",
-            "data_drivepath": "/ocean/projects/mch240013p/matthies/"
+            "wheel_folder_path": "/jet/home/matthies/moonranger_mobility/meshes/wheel_"+str(trial_num)+"/",
+            "data_drivepath": "/ocean/projects/mch240013p/matthies/",
+            "slip": 0.2,
+            "sim_endtime": 0.2,
+            "output_dir": "output_directory"
         }
+
+        with open("job_json/job_parameters.json", "w") as json_file:
+            json.dump(job_json, json_file, indent=4)
 
         print("start bash script")
         script_result = subprocess.run(["./automated_pipeline.sh", "upload", str(trial_num)], capture_output=True, text=True)
