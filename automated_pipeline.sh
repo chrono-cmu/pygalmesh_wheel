@@ -14,11 +14,12 @@ JOB_SCRIPT="/jet/home/$USERNAME/moonranger_mobility/bash_scripts/automation_test
 upload() {
 wheel_folder="wheel_$1"
 wheel_generation
-echo "Uploading $LOCAL_UPLOAD_PATH/wheel.obj and $LOCAL_UPLOAD_PATH/whee_jsons/wheel_parameters.json to $REMOTE_UPLOAD_PATH"
+echo "Uploading $LOCAL_UPLOAD_PATH/wheel.obj and $LOCAL_UPLOAD_PATH/wheel_jsons/wheel_parameters.json to $REMOTE_UPLOAD_PATH"
 ssh -i $HOME/Documents/wheel_sim_pipeline/key_pair_psc "$USERNAME@bridges2.psc.edu" "mkdir -p /jet/home/$USERNAME/moonranger_mobility/meshes/$wheel_folder/"
 scp -r -i $LOCAL_UPLOAD_PATH/key_pair_psc "$LOCAL_UPLOAD_PATH/wheel.obj" "$USERNAME@$CLUSTER_HOST:$REMOTE_UPLOAD_PATH/meshes/$wheel_folder/"
 scp -r -i $LOCAL_UPLOAD_PATH/key_pair_psc "$LOCAL_UPLOAD_PATH/wheel_jsons/wheel_parameters.json" "$USERNAME@$CLUSTER_HOST:$REMOTE_UPLOAD_PATH/meshes/$wheel_folder/"
-echo "uploading to $USERNAME@$CLUSTER_HOST:$REMOTE_UPLOAD_PATH/meshes/$wheel_folder/"
+echo "uploading job json"
+scp -r -i $LOCAL_UPLOAD_PATH/key_pair_psc "$LOCAL_UPLOAD_PATH/job_json/job_parameters.json" "$USERNAME@$CLUSTER_HOST:$REMOTE_UPLOAD_PATH/job_json/" 
 echo "running simulation"
 job_id=$(ssh -i $HOME/Documents/wheel_sim_pipeline/key_pair_psc "$USERNAME@bridges2.psc.edu" "sbatch $JOB_SCRIPT $REMOTE_UPLOAD_PATH/job_json/job_parameters.json" | awk '{print $4}')
 echo "job id:$job_id"
