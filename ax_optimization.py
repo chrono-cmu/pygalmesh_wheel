@@ -12,7 +12,6 @@ import gmail_monitor
 import pandas as pd
 
 
-
 def evaluate(parameters):
         rim_radius = parameters["rim_radius"]
         width = parameters["width"]
@@ -70,7 +69,7 @@ client.configure_experiment(parameters=parameters)
 test_arrays = ["32720007", "32781190", "33283836", "33283810", "32461246", "32724206", "32718125", "32718537", "32721460"]
 metric_name = "score" # this name is used during the optimization loop in Step 5
 objective = f"{metric_name}" # minimization is specified by the negative sign
-
+rim_radius = parameters["rim_radius"]
 client.configure_optimization(objective=objective)
 
 
@@ -108,7 +107,7 @@ for batch_number in range(3): # Run 10 rounds of trials
             "data_drivepath": "/ocean/projects/mch240013p/matthies/",
             "slip": 0.2, #this should be in the automation.sh on onDemand
             "sim_endtime": 0.2,
-            "output_dir": "output_directory"
+            "output_dir": ""
         }
         # download job json
         with open("job_json/job_parameters.json", "w") as json_file:
@@ -141,13 +140,73 @@ for batch_number in range(3): # Run 10 rounds of trials
     print("start gmail monitor")
     job_ids = [row[2] for row in job_array]
     gmail_monitor.monitor(job_ids)
-
+    # slip values currently tested
+    slip_values = [-0.1, 0.0, 0.1, 0.3]
     for trial_index, parameters, job_id in job_array:
-        # df = pd.read_csv('~/Documents/wheel_sim_data/automation_test_' + job_id + '/output_directory/output.csv')
-        avg_dc = evaluate(parameters)
-        # avg_dc = (df['f_x'] / df['f_z']).mean()
+
+        # average drawbar pulls for each slip
+        avg_dcs = []
+        z_variances = []
+        sinkages = []
+        for slip in slip_values:
+            df = pd.read_csv('~/Documents/wheel_sim_data/automation_test_' 
+                             + job_id + '/SkidSteerSim_' + slip + 
+                             '/output.csv')
+            avg_dcs.append((df["f_x"] / df["f_z"]).mean())
+            z_variances.append(df["pos_z"].var(ddof=0)) # leaving blank does unbiased variance
+            sinkages.append(df["pos_z"].min())
+        # area under curve of drawbar pulls
+        slip1 = None
+        slip2 = None
+        for i in range (len(avg_dcs) - 1):
+            p1 = avg_dcs[i]
+            p2 = avg_dcs[i + 1]
+            if(p1 == 0):
+                slip1 = slip2 = slip_values[i]
+                point1 = point2 = 0.0
+                break
+            if(p2 == 0):
+                slip1 = slip2 = slip_values[i + 1]
+                point1 = point2 = 0.0
+                break
+            if(p1 < 0 < p2):
+                slip1 = slip_values[i]
+                slip2 = slip_values[i + 1]
+                point1 = p1
+                point2 = p2
+                break
+
+        if(slip1 is None):
+            print(f"no 0 intercept found")
+        else:
+            slope = (point2 - point1)/(slip2 - slip1);
+            b = point1 - (slope * slip1)
+            x_inter = -b/slope
+        # perform horizontal shift
+        slips_shifted = [s - x_inter for s in slip_values]
+        #area under curve of zero crossing
+        dcs_under_curve = np.trapz(avg_dcs, slips_shifted)
+
+        # MASS
+        mesh_file = "~/Documents/wheel_sim_pipeline/wheel.obj"
+        # run Blender headless to compute mass
+        proc = subprocess.run([
+            "blender",
+            "--background",
+            "--python", "compute_volume.py",
+            "--", mesh_file, "2.7"           # density = 2.7 g/cm³
+        ], capture_output=True, text=True)
+
+        if proc.returncode != 0:
+            raise RuntimeError(f"Volume calc failed:\n{proc.stderr}")
+
+        mass = float(proc.stdout.strip())
+        z_var = float(np.mean(z_variances))
+        sinkage = float(np.mean(sinkages)) - rim_radius - 0.41
+        # compute score with weighted averages
+        score = dcs_under_curve * 0.75 + mass * 0.1 + z_var * 0.05 + 0.1 * sinkage
         # Set raw_data as a dictionary with metric names as keys and results as values
-        raw_data = {metric_name: avg_dc}
+        raw_data = {metric_name: score}
 
         # Complete the trial with the result
         client.complete_trial(trial_index=trial_index, raw_data=raw_data)
