@@ -7,7 +7,7 @@ PROJECT_PATH="/ocean/projects/mch240013p/$USERNAME"
 LOCAL_UPLOAD_PATH=$HOME/Documents/wheel_sim_pipeline
 REMOTE_UPLOAD_PATH="/jet/home/$USERNAME/moonranger_mobility"
 
-LOCAL_DOWNLOAD_PATH="$HOME/Documents/wheel_sim_data"
+LOCAL_DOWNLOAD_PATH="/data/wheel_sim_pipeline_data"
 
 JOB_SCRIPT="/jet/home/$USERNAME/moonranger_mobility/bash_scripts/automation_test.sh"
 
@@ -27,9 +27,10 @@ echo "job id:$job_id"
 
 download() {
 job_id_arg="$1"
-REMOTE_DOWNLOAD_PATH="$PROJECT_PATH/automation_test_$job_id_arg"
+slip="$2"
+REMOTE_DOWNLOAD_PATH="$PROJECT_PATH/automation_test_$job_id_arg/SkidSteerSim_$slip/"
 echo "Downloading from $REMOTE_DOWNLOAD_PATH to $LOCAL_DOWNLOAD_PATH"
-scp -r -i $HOME/Documents/wheel_sim_pipeline/key_pair_psc "$USERNAME@$CLUSTER_HOST:$REMOTE_DOWNLOAD_PATH" "$LOCAL_DOWNLOAD_PATH"
+scp -i $HOME/Documents/wheel_sim_pipeline/key_pair_psc "$USERNAME@$CLUSTER_HOST:$REMOTE_DOWNLOAD_PATH/output.csv" "$LOCAL_DOWNLOAD_PATH/automation_test_$job_id_arg/SkidSteerSim_$slip/"
 echo "Downloaded File $PROJECT_PATH/automation_test_$job_id_arg"
 }
 
@@ -45,7 +46,7 @@ upload)
 upload $2
 ;;
 download)
-download $2
+download $2 $3
 ;;
 test)
 echo "working"

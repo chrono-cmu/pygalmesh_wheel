@@ -178,3 +178,9 @@ credentials*
 
 # py env script
 conda_hook.sh
+
+# test file
+test.py
+
+# data file
+data.csv

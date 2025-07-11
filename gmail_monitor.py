@@ -98,5 +98,5 @@ def monitor(job_id_array):
                         return
         print("loop monitor")
         print("job id array: ", job_id_array)
-        time.sleep(5)
+        time.sleep(300)
     return

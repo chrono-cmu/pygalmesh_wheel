@@ -108,7 +108,7 @@ def plot_from_smac(smac: HPOFacade, model:Simulation, runhistory) -> None:
 
 if __name__ == "__main__":
     model = Simulation()
-    n_trials = 4
+    n_trials = 2
 
     # Scenario object specifying the optimization "environment"
     scenario = Scenario(model.configspace, deterministic=True, n_trials = n_trials)
@@ -134,18 +134,22 @@ if __name__ == "__main__":
             "control_point deviation": info.config["control point deviation"],
             "wave_number": info.config["wave number"],
             "wave_amplitude": info.config["wave amplitude"],
-            "outer_radius": info.config["rim radius"] + info.config["grouser height"]
+            "outer_radius": info.config["rim radius"] + info.config["grouser height"],
+            "total_mass": 4.5 
         }
         with open("wheel_jsons/wheel_parameters.json", "w") as json_file:
             json.dump(wheel_param, json_file, indent=4)
 
         job_json = {
-            "terrain_filepath": "/jet/home/matthies/moonranger_mobility/terrain/GRC_3e5_Reduced_Footprint.csv",
+            "terrain_filepath": "/jet/home/matthies/moonranger_mobility/terrain/GRC_3e5_Reduced_Footprint/",
             "wheel_folder_path": "/jet/home/matthies/moonranger_mobility/meshes/wheel_"+str(trial_num)+"/",
             "data_drivepath": "/ocean/projects/mch240013p/matthies/",
             "slip": 0.2,
             "sim_endtime": 0.2,
-            "output_dir": "output_directory"
+            "output_dir": "output_directory",
+            "rotational_velocity": 0.2,
+            "step_size": 1e-6,
+            "scale_factor": 10
         }
 
         with open("job_json/job_parameters.json", "w") as json_file:
