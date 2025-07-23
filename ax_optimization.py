@@ -12,6 +12,7 @@ import gmail_monitor
 import pandas as pd
 import os
 import time
+import sys
 
 def evaluate(parameters):
         rim_radius = parameters["rim_radius"]
@@ -45,21 +46,22 @@ parameters = [
     RangeParameterConfig(
         name="grouser_number", parameter_type="int", bounds=(5, 30)
     ),
-    RangeParameterConfig(
-        name="grouser_thickness", parameter_type="float", bounds=(0.001, 0.025)
-    ),
+    
         RangeParameterConfig(
         name="grouser_height", parameter_type="float", bounds=(0.01, 0.04)
     ),
     RangeParameterConfig(
-        name="control_point_deviation", parameter_type="float", bounds=(-0.3, 0.3)
-    ),
-        RangeParameterConfig(
-        name="wave_number", parameter_type="int", bounds=(0, 3)
-    ),
-    RangeParameterConfig(
-        name="wave_amplitude", parameter_type="float", bounds=(0, 0.003)
+        name="control_point_deviation", parameter_type="float", bounds=(0, 0.3)
     )
+    # RangeParameterConfig(
+    #     name="grouser_thickness", parameter_type="float", bounds=(0.001, 0.025)
+    # ),
+    #     RangeParameterConfig(
+    #     name="wave_number", parameter_type="int", bounds=(0, 3)
+    # ),
+    # RangeParameterConfig(
+    #     name="wave_amplitude", parameter_type="float", bounds=(0, 0.003)
+    # )
 ]
 client.configure_experiment(parameters=parameters)
 metric_name = "score" # this name is used during the optimization loop in Step 5
@@ -83,17 +85,18 @@ for batch_number in range(3): # Run 3 batches
             "rim_radius": parameters["rim_radius"],
             "width": parameters["width"],
             "grouser_number": parameters["grouser_number"],
-            "grouser_thickness": parameters["grouser_thickness"],
             "grouser_height": parameters["grouser_height"],
-            "control_point deviation": parameters["control_point_deviation"],
-            "wave_number": parameters["wave_number"],
-            "wave_amplitude": parameters["wave_amplitude"],
+            "control_point_deviation": parameters["control_point_deviation"],
             "outer_radius": parameters["rim_radius"] + parameters["grouser_height"]
+            # "wave_number": parameters["wave_number"],
+            # "wave_amplitude": parameters["wave_amplitude"],
+            # "grouser_thickness": parameters["grouser_thickness"],
         }
         # download wheel json
         with open("wheel_jsons/wheel_parameters.json", "w") as json_file:
             json.dump(wheel_param, json_file, indent=4)
         # create json w/ job parameters
+        
         job_json = {
             "terrain_filepath": "/jet/home/matthies/moonranger_mobility/terrain/GRC_3e5_Reduced_Footprint",
             "wheel_folder_path": "/jet/home/matthies/moonranger_mobility/meshes/wheel_"+str(trial_index)+"/",
@@ -112,6 +115,7 @@ for batch_number in range(3): # Run 3 batches
             # bash script creates wheel mesh, uploads mesh & json, and launches script
             print("start bash script")
             script_result = subprocess.run(["./automated_pipeline.sh", "upload", str(trial_index)], capture_output=True, text=True)
+            
             JOB_ID = 0
             if script_result.returncode == 0:
                 output_lines = script_result.stdout.strip().split('\n')
