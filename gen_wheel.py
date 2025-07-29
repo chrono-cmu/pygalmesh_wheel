@@ -49,19 +49,20 @@ out_file = wheel_param.get("out_file", "wheel.obj")
 
 #hard coded values
 amplitude = 0
-grouser_thickness = 0.0015 * 5
+grouser_thickness = 0.002 * 5
 rim_thickness = 0.002 * 5
-wave_number = 0
+wave_number = 3
 
 if __name__ == "__main__":
     # mesh = wg.GenWheel(rad=args.rad, width=args.width, cp_deviation=args.cp_deviation, 
     #                    g_height=args.g_height, g_width=args.g_width, g_density=args.g_density, 
     #                    g_amp=args.g_amp, g_period=args.g_period, g_curved=args.g_curved,
     #                    filename=args.outfile,tri_count=args.tri_count)
-    print("rim: " + str(rim_radius) + " width "+ str(width) +  " grouser num: " + str(grouser_num) + "grous height "+ str(grouser_height) + 
+    print("rim: " + str(rim_radius) + " width "+ str(width) +  " grouser num: " + str(grouser_num) + " grous height "+ str(grouser_height) + 
           " cp deviation: " + str(cp_deviation))
     mesh = wg.GenWheel(rad=rim_radius, width=width, cp_deviation=cp_deviation, 
                        g_height=grouser_height, g_width=grouser_thickness, 
                        g_density=grouser_num, g_amp=amplitude, g_period=wave_number, 
-                       g_curved=curved, filename=out_file, tri_count=tri_count
-                       rim_thickness=rim_thickness)
+                       g_curved=curved, filename=out_file, tri_count=tri_count,
+                       shell_thickness=rim_thickness)
+    print(mesh.bounds)

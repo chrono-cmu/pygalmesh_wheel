@@ -25,7 +25,7 @@ def pyBernstein(degree, t):
 # 2D shapes are in x-z plane. After 3D wheels are created, they are rotated about x to make them face x-forward.
 # cp_deviation is the percentage that the mid 2 control points defining the wheel perimeter deviates from the position where the wheel surface is perfect flat, in z direction 
 # code fails when g_height = 0.025???? Why????
-def GenWheel(rad=0.25, width=0.2, cp_deviation=0., g_height=0.02, g_width=0.005, g_density=12, g_amp=0., g_period=1, g_curved=False, filename="wheel.obj", tri_count=25000, rim_thickness=0.002):
+def GenWheel(rad=0.25, width=0.2, cp_deviation=0., g_height=0.02, g_width=0.005, g_density=12, g_amp=0., g_period=1, g_curved=False, filename="wheel.obj", tri_count=25000, shell_thickness=0.002):
     # The angle between 2 adjacent grousers
     g_angle = 2 * math.pi / g_density
     # 1 if this wheel is convex (bump outwards)
@@ -224,6 +224,9 @@ def GenWheel(rad=0.25, width=0.2, cp_deviation=0., g_height=0.02, g_width=0.005,
     # Exit Edit Mode
     bpy.ops.object.mode_set(mode='OBJECT')
 
+    #scale mesh
+    object_data.scale = (0.2, 0.2, 0.2)
+
     # Export the mesh to a file
     bpy.ops.wm.obj_export(filepath=filename)
 
@@ -233,7 +236,6 @@ def GenWheel(rad=0.25, width=0.2, cp_deviation=0., g_height=0.02, g_width=0.005,
     # mesh.write(filename)
 
     #scale down mesh to regular size
-    mesh.apply_scale(1/5)
 
     return mesh
 
