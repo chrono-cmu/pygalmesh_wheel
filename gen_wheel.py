@@ -37,18 +37,21 @@ args = parser.parse_args(sys.argv[1:])
 with open(args.wheel_param, 'r') as file:
     wheel_param = json.load(file)
 
-rim_radius = wheel_param.get("rim_radius", 0.085)
+#json parameters
+rim_radius = wheel_param.get("rim_radius", 0.085) * 5
 grouser_num = wheel_param.get("grouser_number", 15)
-width = wheel_param.get("width", 0.06)
-grouser_height = wheel_param.get("grouser_height", 0.02)
+width = wheel_param.get("width", 0.06) * 5
+grouser_height = wheel_param.get("grouser_height", 0.02) * 5
 cp_deviation = wheel_param.get("control_point_deviation", 0)
 curved = wheel_param.get("curved", False)
 tri_count = wheel_param.get("tri_count", 50000)
 out_file = wheel_param.get("out_file", "wheel.obj")
 
+#hard coded values
 amplitude = 0
-grouser_thickness = 0.008
-wave_number = 3
+grouser_thickness = 0.0015 * 5
+rim_thickness = 0.002 * 5
+wave_number = 0
 
 if __name__ == "__main__":
     # mesh = wg.GenWheel(rad=args.rad, width=args.width, cp_deviation=args.cp_deviation, 
@@ -60,4 +63,5 @@ if __name__ == "__main__":
     mesh = wg.GenWheel(rad=rim_radius, width=width, cp_deviation=cp_deviation, 
                        g_height=grouser_height, g_width=grouser_thickness, 
                        g_density=grouser_num, g_amp=amplitude, g_period=wave_number, 
-                       g_curved=curved, filename=out_file, tri_count=tri_count)
+                       g_curved=curved, filename=out_file, tri_count=tri_count
+                       rim_thickness=rim_thickness)
