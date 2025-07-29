@@ -13,6 +13,14 @@ import pandas as pd
 import os
 import time
 import sys
+from ax.generation_strategy.model_spec import GeneratorSpec
+from ax.modelbridge.registry import Generators
+from ax.generation_strategy.generation_strategy import GenerationStrategy
+from ax.generation_strategy.generation_node import GenerationNode
+from ax.generation_strategy.transition_criterion import MinTrials
+
+batch_size = 5
+num_batches = 2
 
 def evaluate(parameters):
         rim_radius = parameters["rim_radius"]
@@ -35,6 +43,7 @@ def evaluate(parameters):
         noise_scale = random.random()*.4 +.8
         score *= noise_scale
         return score
+
 client = Client()
 parameters = [
     RangeParameterConfig(
@@ -63,17 +72,66 @@ parameters = [
     #     name="wave_amplitude", parameter_type="float", bounds=(0, 0.003)
     # )
 ]
-client.configure_experiment(parameters=parameters)
+client.configure_experiment(
+    parameters=parameters,
+    parameter_constraints=["rim_radius + grouser_height <= 0.115"],
+)
 metric_name = "score" # this name is used during the optimization loop in Step 5
 objective = f"{metric_name}" # minimization is specified by the negative sign
 client.configure_optimization(objective=objective)
 
+def construct_generation_strategy(
+    generator_spec: GeneratorSpec, node_name: str,
+) -> GenerationStrategy:
+    """Constructs a Sobol + Modular BoTorch `GenerationStrategy`
+    using the provided `generator_spec` for the Modular BoTorch node.
+    """
+    botorch_node = GenerationNode(
+        node_name=node_name,
+        model_specs=[generator_spec],
+    )
+    sobol_node = GenerationNode(
+        node_name="Sobol",
+        model_specs=[
+            GeneratorSpec(
+                model_enum=Generators.SOBOL,
+                # Let's use model_kwargs to set the random seed.
+                model_kwargs={"seed": 0},
+            ),
+        ],
+        transition_criteria=[
+            # Transition to BoTorch node once there are 5 trials on the experiment.
+            MinTrials(
+                threshold=batch_size,
+                transition_to=botorch_node.node_name,
+                use_all_trials_in_exp=True,
+            )
+        ]
+    )
+    # Center node is a customized node that uses a simplified logic and has a
+    # built-in transition criteria that transitions after generating once.
+    return GenerationStrategy(
+        name=f"Sobol+{node_name}",
+        nodes=[sobol_node, botorch_node]
+    )
+
+# Let's construct the simplest version with all defaults.
+generation_strategy = construct_generation_strategy(
+    generator_spec=GeneratorSpec(model_enum=Generators.BOTORCH_MODULAR),
+    node_name="Modular BoTorch",
+)
+
+#custom generation strategy
+client.set_generation_strategy(
+    generation_strategy=generation_strategy,
+)
+
 previous_data = pd.read_csv("./data.csv")
 all_job_ids = []
 
-for batch_number in range(3): # Run 3 batches
+for batch_number in range(num_batches):
     
-    trials = client.get_next_trials(max_trials=3) # batches of size 3
+    trials = client.get_next_trials(max_trials=batch_size)
     #get batch parameters
     job_array = []
     for trial_index, parameters in trials.items():
