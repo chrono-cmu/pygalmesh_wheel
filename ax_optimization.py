@@ -18,6 +18,7 @@ from ax.modelbridge.registry import Generators
 from ax.generation_strategy.generation_strategy import GenerationStrategy
 from ax.generation_strategy.generation_node import GenerationNode
 from ax.generation_strategy.transition_criterion import MinTrials
+import trimesh
 
 batch_size = 5
 num_batches = 2
@@ -126,8 +127,9 @@ client.set_generation_strategy(
     generation_strategy=generation_strategy,
 )
 
-previous_data = pd.read_csv("./data.csv")
-all_job_ids = []
+# previous_data = pd.read_csv("./data.csv")
+drawbar_job_ids = []
+steering_job_ids = []
 
 for batch_number in range(num_batches):
     
@@ -135,10 +137,10 @@ for batch_number in range(num_batches):
     #get batch parameters
     job_array = []
     for trial_index, parameters in trials.items():
-        job_array.append([trial_index, parameters, 0])
+        job_array.append([trial_index, parameters, 0, 0])
     #launch every job
     for i in range(len(job_array)):
-        trial_index, parameters, _ = job_array[i]
+        trial_index, parameters, _, _ = job_array[i]
         wheel_param = {
             "rim_radius": parameters["rim_radius"],
             "width": parameters["width"],
@@ -153,84 +155,109 @@ for batch_number in range(num_batches):
         # download wheel json
         with open("wheel_jsons/wheel_parameters.json", "w") as json_file:
             json.dump(wheel_param, json_file, indent=4)
+
+        #create wheel
+        subprocess.run(["python3", "gen_wheel.py," "-w," "wheel_jsons/wheel_parameters.json"])
+
+        #find mass
+        mesh = trimesh.load("wheel.obj")
+        volume = mesh.volume
+        mass = volume * 2.7 * 1e6
+        wheel_param["mass"] = mass
+        with open("wheel_jsons/wheel_parameters.json", "w") as json_file:
+            json.dump(wheel_param, json_file, indent=4)
+
         # create json w/ job parameters
-        
-        job_json = {
+        drawbar_job_json = {
             "terrain_filepath": "/jet/home/matthies/moonranger_mobility/terrain/GRC_3e5_Reduced_Footprint",
             "wheel_folder_path": "/jet/home/matthies/moonranger_mobility/meshes/wheel_"+str(trial_index)+"/",
             "data_drivepath": "/ocean/projects/mch240013p/matthies/",
             "sim_endtime": 5,
-            "output_dir": ""
+            "output_dir": "",
+            "rotational_velocity": 0.2,
+            "step_size": 1e-6,
+            "scale_factor": 10,
+            "wheel_angle": 0
         }
         # download job json
-        with open("job_json/job_parameters.json", "w") as json_file:
-            json.dump(job_json, json_file, indent=4)
+        with open("job_json/drawbar_job_json.json", "w") as json_file:
+            json.dump(drawbar_job_json, json_file, indent=4)
 
-        previous_jobs = ['33401656', '33401659', '33401662', "33412051", "33412057"]
-        if trial_index < len(previous_data):
-            JOB_ID = previous_jobs[trial_index]
-        else:
-            # bash script creates wheel mesh, uploads mesh & json, and launches script
-            print("start bash script")
-            script_result = subprocess.run(["./automated_pipeline.sh", "upload", str(trial_index)], capture_output=True, text=True)
-            
-            JOB_ID = 0
-            if script_result.returncode == 0:
-                output_lines = script_result.stdout.strip().split('\n')
-                for line in output_lines:
-                    if "job id:" in line:
-                        JOB_ID = line.split(":")[1]
-                if JOB_ID == 0:
-                    print("job id not found")
-                else:
-                    print("Script success and jobid captured "+ JOB_ID)
+        # create json w/ job parameters
+        steering_job_json = {
+            "terrain_filepath": "/jet/home/matthies/moonranger_mobility/terrain/GRC_3e5_Reduced_Footprint",
+            "wheel_folder_path": "/jet/home/matthies/moonranger_mobility/meshes/wheel_"+str(trial_index)+"/",
+            "data_drivepath": "/ocean/projects/mch240013p/matthies/",
+            "sim_endtime": 5,
+            "output_dir": "",
+            "rotational_velocity": 0.2,
+            "step_size": 1e-6,
+            "scale_factor": 10,
+            "wheel_angle": 10
+        }
+        # download job json
+        with open("job_json/steering_job_json.json", "w") as json_file:
+            json.dump(steering_job_json, json_file, indent=4)
+
+        # previous_jobs = ['33401656', '33401659', '33401662', "33412051", "33412057"]
+        # if trial_index < len(previous_data):
+        #     JOB_ID = previous_jobs[trial_index]
+    
+        # bash script creates wheel mesh, uploads mesh & json, and launches script
+        print("start bash script")
+        script_result = subprocess.run(["./automated_pipeline.sh", "upload", str(trial_index)], capture_output=True, text=True)
+        
+        STEERING_JOB_ID = 0
+        DRAWBAR_JOB_ID = 0
+        if script_result.returncode == 0:
+            output_lines = script_result.stdout.strip().split('\n')
+            for line in output_lines:
+                if "drawbar job id:" in line:
+                    DRAWBAR_JOB_ID = line.split(":")[1]
+                elif "steering job id:" in line:
+                    STEERING_JOB_ID = line.split(":")[1]
+            if STEERING_JOB_ID == 0 or DRAWBAR_JOB_ID == 0:
+                print("job id not found")
             else:
-                print("Script failed or filename not capture")
-            print("end bash script")
-            print("stdout:")
-            print(script_result.stdout)
-            print("stderr:")
-            print(script_result.stderr)
-
-        # mesh_file = "wheel.obj"
-        # # run Blender headless to compute mass
-        # proc = subprocess.run([
-        #     "blender",
-        #     "--background",
-        #     "--python", "compute_volume.py",
-        #     "--", mesh_file, "2.7"           # density = 2.7 g/cm³
-        # ], capture_output=True, text=True)
-        # if proc.returncode != 0:
-        #     raise RuntimeError(f"Volume calc failed:\n{proc.stderr}")
-        # mass = float(proc.stdout.strip())
-        # updated_parameters = parameters.copy()
-        # updated_parameters["mass"] = mass
+                print("Script success and jobid captured. Drawbar: "+ DRAWBAR_JOB_ID, " Steering: ", STEERING_JOB_ID)
+        else:
+            print("Script failed or filename not capture")
+        print("end bash script")
+        print("stdout:")
+        print(script_result.stdout)
+        print("stderr:")
+        print(script_result.stderr)
 
         # job_array[i] = [trial_index, updated_parameters, JOB_ID]
-        job_array[i] = [trial_index, parameters, JOB_ID]
-        all_job_ids.append(JOB_ID)
+        job_array[i] = [trial_index, parameters, DRAWBAR_JOB_ID, STEERING_JOB_ID]
+        drawbar_job_ids.append(DRAWBAR_JOB_ID)
+        steering_job_ids.append(STEERING_JOB_ID)
 
     print("start gmail monitor")
-    job_ids = [row[2] for row in job_array]
-    gmail_monitor.monitor(job_ids)
+    drawbar_job_ids = [row[2] for row in job_array]
+    steering_job_ids =  [row[3] for row in job_array]
+    all_job_ids = drawbar_job_ids + steering_job_ids
+    gmail_monitor.monitor(all_job_ids)
 
     # slip values currently tested
     slip_values = [-0.1, 0.0, 0.1]
     slip_values_str = ["-0.100000", "0.000000", "0.100000"]
-    for trial_index, parameters, job_id in job_array:
+    for trial_index, parameters, drawbar_job_id, steering_job_id in job_array:
         rim_radius = parameters["rim_radius"]
-        # average drawbar pulls for each slip
+        mass = parameters["mass"]
+
+        # metrics for the drawbar sim
         avg_dcs = []
         z_variances = []
         sinkages = []
-        local_job_folder = "/data/wheel_sim_pipeline_data/automation_test_" + job_id
+        local_job_folder = "/data/wheel_sim_pipeline_data/automation_test_" + drawbar_job_id
         os.makedirs(local_job_folder, exist_ok = True)
         for slip in slip_values_str:
             os.makedirs(local_job_folder+"/SkidSteerSim_"+slip,exist_ok=True)
         for slip in slip_values_str:
-            subprocess.run(["./automated_pipeline.sh", "download", job_id, slip])
+            subprocess.run(["./automated_pipeline.sh", "download", drawbar_job_id, slip])
             df = pd.read_csv('/data/wheel_sim_pipeline_data/automation_test_'
-                             + job_id + '/SkidSteerSim_' + slip +
+                             + drawbar_job_id + '/SkidSteerSim_' + slip +
                              '/output.csv')
             avg_dcs.append((df["f_x"] / df["f_z"]).mean())
             z_variances.append(df["pos_z"].var(ddof=0)) # leaving blank does unbiased variance
@@ -260,6 +287,19 @@ for batch_number in range(num_batches):
             print(f"no 0 intercept found")
             x_inter = 0
 
+        #metrics for the steering test
+        avg_f_y = []
+        local_job_folder = "/data/wheel_sim_pipeline_data/automation_test_" + steering_job_id
+        os.makedirs(local_job_folder, exist_ok = True)
+        for slip in slip_values_str:
+            os.makedirs(local_job_folder+"/Steering_"+slip,exist_ok=True)
+        for slip in slip_values_str:
+            subprocess.run(["./automated_pipeline.sh", "download", steering_job_id, slip])
+            df = pd.read_csv('/data/wheel_sim_pipeline_data/automation_test_'
+                             + steering_job_id + '/Steering_' + slip +
+                             '/output.csv')
+            avg_f_y.append((df["f_y"]).mean())
+
         # perform horizontal shift
         slips_shifted = [s - x_inter for s in slip_values]
         #area under curve of zero crossing
@@ -272,9 +312,10 @@ for batch_number in range(num_batches):
         # mass = parameters["mass"]
         z_var = float(np.mean(z_variances))
         sinkage = float(np.mean(sinkages)) - rim_radius + 0.41
+        mean_f_y = np.mean(avg_f_y)
         # compute score with weighted averages
         # score = dcs_under_curve * 0.75 + mass * 0.1 + z_var * 0.05 + 0.1 * sinkage
-        score = dcs_under_curve * 0.75 + z_var * 0.05 + 0.1 * sinkage
+        score = dcs_under_curve * 0.55 + mass * 0.2 +sinkage * 0.1 + mean_f_y * .1 + z_var * 0.05 
 
         if np.isnan(score):
             for _ in range(3):

@@ -18,11 +18,14 @@ echo "Uploading $LOCAL_UPLOAD_PATH/wheel.obj and $LOCAL_UPLOAD_PATH/wheel_jsons/
 ssh -i $HOME/Documents/wheel_sim_pipeline/key_pair_psc "$USERNAME@bridges2.psc.edu" "mkdir -p /jet/home/$USERNAME/moonranger_mobility/meshes/$wheel_folder/"
 scp -r -i $LOCAL_UPLOAD_PATH/key_pair_psc "$LOCAL_UPLOAD_PATH/wheel.obj" "$USERNAME@$CLUSTER_HOST:$REMOTE_UPLOAD_PATH/meshes/$wheel_folder/"
 scp -r -i $LOCAL_UPLOAD_PATH/key_pair_psc "$LOCAL_UPLOAD_PATH/wheel_jsons/wheel_parameters.json" "$USERNAME@$CLUSTER_HOST:$REMOTE_UPLOAD_PATH/meshes/$wheel_folder/"
-echo "uploading job json"
-scp -r -i $LOCAL_UPLOAD_PATH/key_pair_psc "$LOCAL_UPLOAD_PATH/job_json/job_parameters.json" "$USERNAME@$CLUSTER_HOST:$REMOTE_UPLOAD_PATH/job_json/" 
-echo "running simulation"
-job_id=$(ssh -i $HOME/Documents/wheel_sim_pipeline/key_pair_psc "$USERNAME@bridges2.psc.edu" "sbatch $JOB_SCRIPT $REMOTE_UPLOAD_PATH/job_json/job_parameters.json" | awk '{print $4}')
-echo "job id:$job_id"
+echo "uploading job jsons"
+scp -r -i $LOCAL_UPLOAD_PATH/key_pair_psc "$LOCAL_UPLOAD_PATH/job_json/drawbar_job_parameters.json" "$USERNAME@$CLUSTER_HOST:$REMOTE_UPLOAD_PATH/job_json/" 
+scp -r -i $LOCAL_UPLOAD_PATH/key_pair_psc "$LOCAL_UPLOAD_PATH/job_json/steering_job_parameters.json" "$USERNAME@$CLUSTER_HOST:$REMOTE_UPLOAD_PATH/job_json/" 
+echo "running simulations"
+drawbar_job_id=$(ssh -i $HOME/Documents/wheel_sim_pipeline/key_pair_psc "$USERNAME@bridges2.psc.edu" "sbatch $JOB_SCRIPT $REMOTE_UPLOAD_PATH/job_json/drawbar_job_parameters.json" | awk '{print $4}')
+steering_job_id=$(ssh -i $HOME/Documents/wheel_sim_pipeline/key_pair_psc "$USERNAME@bridges2.psc.edu" "sbatch $JOB_SCRIPT $REMOTE_UPLOAD_PATH/job_json/steeing_job_parameters.json" | awk '{print $4}')
+echo "drawbar job id:$job_id"
+echo "steering job id:$job_id"
 }
 
 download() {
