@@ -313,9 +313,20 @@ for batch_number in range(num_batches):
         z_var = float(np.mean(z_variances))
         sinkage = float(np.mean(sinkages)) - rim_radius + 0.41
         mean_f_y = np.mean(avg_f_y)
+
+        # baseline values
+        BASE_DC = 0.259354162
+        BASE_SINKAGE = -0.016354767
+        BASE_ZVAR = 1.70575e-6
+        BASE_MASS = 0.238
+
+        pd_dc = ((dcs_under_curve - BASE_DC) / abs(BASE_DC)) * 100
+        pd_sinkage = ((sinkage-BASE_SINKAGE) / abs(BASE_SINKAGE)) * 100
+        pd_zvar = ((z_var - BASE_ZVAR) / abs(BASE_ZVAR)) * 100
+        pd_mass = ((mass - BASE_MASS) / abs(BASE_MASS)) * 100
         # compute score with weighted averages
         # score = dcs_under_curve * 0.75 + mass * 0.1 + z_var * 0.05 + 0.1 * sinkage
-        score = dcs_under_curve * 0.55 + mass * 0.2 +sinkage * 0.1 + mean_f_y * .1 + z_var * 0.05 
+        score = pd_dc * 0.55 + pd_mass * 0.2 + pd_sinkage * 0.1 + mean_f_y * .1 + pd_zvar * 0.05 
 
         if np.isnan(score):
             for _ in range(3):
